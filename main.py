@@ -4,6 +4,9 @@ import gi
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, Pango, Gst
 
+import os
+from mutagen.mp3 import MP3
+from mutagen.easyid3 import EasyID3
 
 # from gi.repository import GSound
 # from gi.repository.Pango import WrapMode
@@ -21,9 +24,8 @@ class WindowMain:
         self.windowMain = self.builder.get_object("windowMain")
 
         listbox = self.builder.get_object("lstSongs")
-        listbox.set_selection_mode(Gtk.SelectionMode.NONE)
-
-        self._add_row(listbox, "asdfasdf", "asdfasdf asdfasdfasd asdfasd", None, self.on_radio_button_toggled)
+        self.listbox = listbox
+        self.listbox.set_selection_mode(Gtk.SelectionMode.NONE)
 
         self.windowMain.show_all()
 
@@ -34,7 +36,8 @@ class WindowMain:
         response = filechooserdialog.run()
 
         if response == Gtk.ResponseType.OK:
-            print("File selected: %s" % filechooserdialog.get_filename())
+            # print("File selected: %s" % filechooserdialog.get_filename())
+            self.directory_entered(filechooserdialog.get_filename())
 
         filechooserdialog.destroy()
 
@@ -73,6 +76,20 @@ class WindowMain:
     def main(self):
         Gtk.main()
 
+    def directory_entered(self, path):
+
+        for root, subdirs, files in os.walk(path):
+            list_file_path = os.path.join(root, 'my-directory-list.txt')
+
+            with open(list_file_path, 'wb'):
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    if file_path.endswith(".mp3"):
+                        metadata = MP3(file_path, ID3=EasyID3)
+                        filename = os.path.basename(file_path)
+                        self._add_row(self.listbox, metadata.get("title")[0], metadata.get("artist")[0], None, None)
+
+        self.windowMain.show_all()
 
 if __name__ == "__main__":
     application = WindowMain()

@@ -1,0 +1,7 @@
+Install pythong-gi
+sudo apt install python3-gi
+
+Install Gtk
+pip install PyGTK
+sudo apt install gtk
+sudo apt install python3-gobject
