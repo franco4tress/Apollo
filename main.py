@@ -3,6 +3,8 @@ import gi
 
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, Pango, Gst
+
+
 # from gi.repository import GSound
 # from gi.repository.Pango import WrapMode
 
@@ -21,10 +23,21 @@ class WindowMain:
         listbox = self.builder.get_object("lstSongs")
         listbox.set_selection_mode(Gtk.SelectionMode.NONE)
 
-        buttonLabel = Gtk.ToggleButton()
-        self._add_row(listbox, "asdfasdf", "asdfasdf asdfasdfasd asdfasd", buttonLabel, self.on_radio_button_toggled)
+        self._add_row(listbox, "asdfasdf", "asdfasdf asdfasdfasd asdfasd", None, self.on_radio_button_toggled)
 
         self.windowMain.show_all()
+
+    def onRootDirectorySelected(self, _):
+        filechooserdialog = Gtk.FileChooserDialog("Open...", None, Gtk.FileChooserAction.SELECT_FOLDER, (
+            Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_OPEN, Gtk.ResponseType.OK))
+        filechooserdialog.set_title("FileChooserDialog")
+        response = filechooserdialog.run()
+
+        if response == Gtk.ResponseType.OK:
+            print("File selected: %s" % filechooserdialog.get_filename())
+
+        filechooserdialog.destroy()
+
 
     def on_radio_button_toggled(self, radio, row):
         # If the radio button toggled to inactive, don't reactivate the row
@@ -36,9 +49,9 @@ class WindowMain:
         row = Gtk.ListBoxRow()
         box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
 
-        button.set_valign(Gtk.Align.START)
-        button.connect("toggled", clicked, row)
-        box.add(button)
+        # button.set_valign(Gtk.Align.START)
+        # button.connect("toggled", clicked, row)
+        # box.add(button)
 
         label = Gtk.Label(label="<b>%s</b>\n%s" % (name, desc),
                           use_markup=True, wrap=True, wrap_mode=Pango.WrapMode.WORD_CHAR,

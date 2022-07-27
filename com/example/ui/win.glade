@@ -31,12 +31,13 @@
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
                     <child>
-                      <object class="GtkImageMenuItem">
+                      <object class="GtkImageMenuItem" id="mnuRootDirectory">
                         <property name="label">gtk-new</property>
                         <property name="visible">True</property>
                         <property name="can-focus">False</property>
                         <property name="use-underline">True</property>
                         <property name="use-stock">True</property>
+                        <signal name="activate" handler="onRootDirectorySelected" swapped="no"/>
                       </object>
                     </child>
                     <child>
@@ -92,6 +93,7 @@
                 <property name="can-focus">False</property>
                 <property name="label" translatable="yes">_Edit</property>
                 <property name="use-underline">True</property>
+                <signal name="select" handler="onRootDirectorySelected" swapped="no"/>
                 <child type="submenu">
                   <object class="GtkMenu">
                     <property name="visible">True</property>
@@ -185,9 +187,6 @@
                 <property name="can-focus">False</property>
                 <property name="hexpand">True</property>
                 <property name="selection-mode">multiple</property>
-                <child type="placeholder">
-                  <placeholder/>
-                </child>
               </object>
               <packing>
                 <property name="resize">True</property>
@@ -198,9 +197,6 @@
               <object class="GtkListBox" id="listbox">
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
-                <child type="placeholder">
-                  <placeholder/>
-                </child>
                 <style>
                   <class name="asdfasdf"/>
                 </style>
