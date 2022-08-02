@@ -68,7 +68,8 @@ class WindowMain:
 
     def on_lstSongs_row_selected(self, listbox, listboxrow):
         songPath = self.songs[listboxrow.get_index()][1]
-        print("Selected song %s" % (songPath))
+        album = self.songs[listboxrow.get_index()][3]
+        print("Selected song %s - %s" % (songPath, album))
 
     def playSong(self, path):
         print(path)
@@ -93,8 +94,8 @@ class WindowMain:
                     if file_path.endswith(".mp3"):
                         metadata = MP3(file_path, ID3=EasyID3)
                         filename = os.path.basename(file_path)
-                        self.songs.append([file_path, metadata.get("title")[0], metadata.get("artist")[0]])
-                        self._add_row(self.listbox, metadata.get("title")[0], metadata.get("artist")[0], None, None)
+                        self.songs.append([file_path, metadata.get("title")[0], metadata.get("artist")[0], metadata.get("album")[0]])
+                        self._add_row(self.listbox, metadata.get("title")[0], metadata.get("album")[0], None, None)
 
         self.windowMain.show_all()
 
