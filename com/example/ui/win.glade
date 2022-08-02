@@ -199,7 +199,7 @@
                             <property name="visible">True</property>
                             <property name="can-focus">False</property>
                             <property name="hexpand">True</property>
-                            <property name="selection-mode">multiple</property>
+                            <signal name="row-activated" handler="on_lstSongs_row_selected" swapped="no"/>
                           </object>
                         </child>
                       </object>
@@ -217,7 +217,10 @@
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
                 <child>
-                  <placeholder/>
+                  <object class="GtkListBox" id="lsDetails">
+                    <property name="visible">True</property>
+                    <property name="can-focus">False</property>
+                  </object>
                 </child>
               </object>
               <packing>

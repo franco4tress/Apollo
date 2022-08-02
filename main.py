@@ -25,7 +25,9 @@ class WindowMain:
 
         listbox = self.builder.get_object("lstSongs")
         self.listbox = listbox
-        self.listbox.set_selection_mode(Gtk.SelectionMode.NONE)
+        self.listbox.set_selection_mode(Gtk.SelectionMode.SINGLE)
+
+        self.songs = []
 
         self.windowMain.show_all()
 
@@ -62,7 +64,11 @@ class WindowMain:
         box.add(label)
 
         row.add(box)
-        listbox.prepend(row)
+        listbox.insert(row, -1)
+
+    def on_lstSongs_row_selected(self, listbox, listboxrow):
+        songPath = self.songs[listboxrow.get_index()][1]
+        print("Selected song %s" % (songPath))
 
     def playSong(self, path):
         print(path)
@@ -87,6 +93,7 @@ class WindowMain:
                     if file_path.endswith(".mp3"):
                         metadata = MP3(file_path, ID3=EasyID3)
                         filename = os.path.basename(file_path)
+                        self.songs.append([file_path, metadata.get("title")[0], metadata.get("artist")[0]])
                         self._add_row(self.listbox, metadata.get("title")[0], metadata.get("artist")[0], None, None)
 
         self.windowMain.show_all()
