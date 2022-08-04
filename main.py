@@ -27,6 +27,14 @@ class WindowMain:
         self.listbox = listbox
         self.listbox.set_selection_mode(Gtk.SelectionMode.SINGLE)
 
+        Gst.init(None)
+        self.player = Gst.ElementFactory.make("playbin", "player")
+        fakesink = Gst.ElementFactory.make("fakesink", "fakesink")
+        self.player.set_property("video-sink", fakesink)
+        bus = self.player.get_bus()
+        bus.add_signal_watch()
+        bus.connect("message", self.on_message)
+
         self.songs = []
 
         self.windowMain.show_all()
@@ -50,13 +58,9 @@ class WindowMain:
             return
         row.activate()
 
-    def _add_row(self, listbox, name, desc, button, clicked):
+    def _add_row(self, listbox, name, desc, clicked):
         row = Gtk.ListBoxRow()
         box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
-
-        # button.set_valign(Gtk.Align.START)
-        # button.connect("toggled", clicked, row)
-        # box.add(button)
 
         label = Gtk.Label(label="<b>%s</b>\n%s" % (name, desc),
                           use_markup=True, wrap=True, wrap_mode=Pango.WrapMode.WORD_CHAR,
@@ -67,9 +71,22 @@ class WindowMain:
         listbox.insert(row, -1)
 
     def on_lstSongs_row_selected(self, listbox, listboxrow):
-        songPath = self.songs[listboxrow.get_index()][1]
+        filepath = self.songs[listboxrow.get_index()][0]
+        title = self.songs[listboxrow.get_index()][1]
         album = self.songs[listboxrow.get_index()][3]
-        print("Selected song %s - %s" % (songPath, album))
+
+        playerState = self.player.get_state(0)
+        print(playerState.state)
+
+        if playerState.state == Gst.State.PLAYING:
+            print("Stopping player...")
+            self.player.set_state(Gst.State.NULL)
+            print("Player stopped...")
+
+        self.player.set_property("uri", "file://" + filepath)
+        self.player.set_state(Gst.State.PLAYING)
+
+        print("Selected song %s - %s" % (filepath, album))
 
     def playSong(self, path):
         print(path)
@@ -83,6 +100,17 @@ class WindowMain:
     def main(self):
         Gtk.main()
 
+    def on_message(self, bus, message):
+        t = message.type
+        if t == Gst.MessageType.EOS:
+            self.player.set_state(Gst.State.NULL)
+            self.button.set_label("Start")
+        elif t == Gst.MessageType.ERROR:
+            self.player.set_state(Gst.State.NULL)
+            err, debug = message.parse_error()
+            print("Error: %s" % err, debug)
+            self.button.set_label("Start")
+
     def directory_entered(self, path):
 
         for root, subdirs, files in os.walk(path):
@@ -95,7 +123,7 @@ class WindowMain:
                         metadata = MP3(file_path, ID3=EasyID3)
                         filename = os.path.basename(file_path)
                         self.songs.append([file_path, metadata.get("title")[0], metadata.get("artist")[0], metadata.get("album")[0]])
-                        self._add_row(self.listbox, metadata.get("title")[0], metadata.get("album")[0], None, None)
+                        self._add_row(self.listbox, metadata.get("title")[0], metadata.get("album")[0], None)
 
         self.windowMain.show_all()
 
