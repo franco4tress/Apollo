@@ -20,6 +20,8 @@ class WindowMain:
         self.builder.add_from_file("com/example/ui/win.glade")
         self.builder.connect_signals(self)
 
+        self.song_playing = ""
+
         # Display main window
         self.windowMain = self.builder.get_object("windowMain")
 
@@ -74,19 +76,23 @@ class WindowMain:
         filepath = self.songs[listboxrow.get_index()][0]
         title = self.songs[listboxrow.get_index()][1]
         album = self.songs[listboxrow.get_index()][3]
-
         playerState = self.player.get_state(0)
-        print(playerState.state)
 
-        if playerState.state == Gst.State.PLAYING:
-            print("Stopping player...")
-            self.player.set_state(Gst.State.NULL)
-            print("Player stopped...")
+        if filepath not in self.song_playing:
+            if playerState.state == Gst.State.PLAYING:
+                self.player.set_state(Gst.State.NULL)
+                self.song_playing = filepath
 
-        self.player.set_property("uri", "file://" + filepath)
-        self.player.set_state(Gst.State.PLAYING)
+            self.player.set_property("uri", "file://" + filepath)
+            self.player.set_state(Gst.State.PLAYING)
 
-        print("Selected song %s - %s" % (filepath, album))
+        else:
+            if playerState.state == Gst.State.PLAYING:
+                self.player.set_state(Gst.State.PAUSED)
+
+            else:
+                self.player.set_state(Gst.State.PLAYING)
+
 
     def playSong(self, path):
         print(path)
@@ -104,7 +110,7 @@ class WindowMain:
         t = message.type
         if t == Gst.MessageType.EOS:
             self.player.set_state(Gst.State.NULL)
-            self.button.set_label("Start")
+            # self.button.set_label("Start")
         elif t == Gst.MessageType.ERROR:
             self.player.set_state(Gst.State.NULL)
             err, debug = message.parse_error()
