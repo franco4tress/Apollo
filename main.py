@@ -121,6 +121,11 @@ class WindowMain:
             print("Error: %s" % err, debug)
             self.button.set_label("Start")
 
+    def on_skipbutton_clicked(self, place_holder):
+        print("Hi")
+        self.player.set_state(Gst.State.NULL)
+        self.play_next_song()
+
     def play_next_song(self):
         if self.randomplay:
             next_song_num = random.randrange(0, len(self.listbox) - 1)
