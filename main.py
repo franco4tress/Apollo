@@ -8,6 +8,8 @@ import os
 from mutagen.mp3 import MP3
 from mutagen.easyid3 import EasyID3
 
+import random
+
 # from gi.repository import GSound
 # from gi.repository.Pango import WrapMode
 
@@ -37,6 +39,9 @@ class WindowMain:
         bus.add_signal_watch()
         bus.connect("message", self.on_message)
 
+        self.randomplay = False
+        self.songs_played = []
+        self.lst_songs = []
         self.songs = []
 
         self.windowMain.show_all()
@@ -74,8 +79,9 @@ class WindowMain:
 
     def on_lstSongs_row_selected(self, listbox, listboxrow):
         filepath = self.songs[listboxrow.get_index()][0]
-        title = self.songs[listboxrow.get_index()][1]
-        album = self.songs[listboxrow.get_index()][3]
+#        current_song = self.listbox.get_selected_row()
+#        title = self.songs[listboxrow.get_index()][1]
+#        album = self.songs[listboxrow.get_index()][3]
         playerState = self.player.get_state(0)
 
         if filepath not in self.song_playing:
@@ -93,7 +99,6 @@ class WindowMain:
             else:
                 self.player.set_state(Gst.State.PLAYING)
 
-
     def playSong(self, path):
         print(path)
 
@@ -109,13 +114,54 @@ class WindowMain:
     def on_message(self, bus, message):
         t = message.type
         if t == Gst.MessageType.EOS:
+            current_song = self.listbox.get_selected_row()
+            self.songs_played.append(current_song.get_index())
             self.player.set_state(Gst.State.NULL)
+            self.play_next_song()
             # self.button.set_label("Start")
         elif t == Gst.MessageType.ERROR:
             self.player.set_state(Gst.State.NULL)
             err, debug = message.parse_error()
             print("Error: %s" % err, debug)
             self.button.set_label("Start")
+
+    def on_previousbutton_clicked(self, place_holder):
+        self.player.set_state(Gst.State.NULL)
+        self.play_last_song()
+
+    def on_skipbutton_clicked(self, place_holder):
+        self.player.set_state(Gst.State.NULL)
+        current_song = self.listbox.get_selected_row()
+        self.songs_played.append(current_song.get_index())
+        self.play_next_song()
+
+    def play_last_song(self):
+        self.player.set_state(Gst.State.NULL)
+
+        if len(self.songs_played) != 0:
+            last_song = self.listbox.get_row_at_index(self.songs_played.pop(len(self.songs_played) - 1))
+            self.listbox.select_row(last_song)
+            self.on_lstSongs_row_selected(self.listbox, last_song)
+
+    def play_next_song(self):
+        if self.randomplay:
+            next_song_num = random.randrange(0, len(self.listbox) - 1)
+            next_song = self.listbox.get_row_at_index(next_song_num)
+
+        else:
+            current_song = self.listbox.get_selected_row()
+
+            index = current_song.get_index() + 1
+            if current_song.get_index() == len(self.listbox) - 1:
+                index = 0
+
+            next_song = self.listbox.get_row_at_index(index)
+
+        self.listbox.select_row(next_song)
+        self.on_lstSongs_row_selected(self.listbox, next_song)
+
+    def on_rndPlay_toggled(self, place_holder):
+        self.randomplay = not self.randomplay
 
     def directory_entered(self, path):
 
@@ -126,8 +172,8 @@ class WindowMain:
                 for file in files:
                     file_path = os.path.join(root, file)
                     if file_path.endswith(".mp3"):
+                        self.lst_songs.append([file_path])
                         metadata = MP3(file_path, ID3=EasyID3)
-                        filename = os.path.basename(file_path)
                         self.songs.append([file_path, metadata.get("title")[0], metadata.get("artist")[0], metadata.get("album")[0]])
                         self._add_row(self.listbox, metadata.get("title")[0], metadata.get("album")[0], None)
 
