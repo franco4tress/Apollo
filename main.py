@@ -39,6 +39,7 @@ class WindowMain:
         bus.add_signal_watch()
         bus.connect("message", self.on_message)
 
+        self.loop = False
         self.randomplay = False
         self.songs_played = []
         self.lst_songs = []
@@ -125,11 +126,14 @@ class WindowMain:
             print("Error: %s" % err, debug)
             self.button.set_label("Start")
 
-    def on_previousbutton_clicked(self, place_holder):
+    def on_loopbutton_toggled(self, _):
+        self.loop = not self.loop
+
+    def on_previousbutton_clicked(self, _):
         self.player.set_state(Gst.State.NULL)
         self.play_last_song()
 
-    def on_skipbutton_clicked(self, place_holder):
+    def on_skipbutton_clicked(self, _):
         self.player.set_state(Gst.State.NULL)
         current_song = self.listbox.get_selected_row()
         self.songs_played.append(current_song.get_index())
@@ -144,21 +148,24 @@ class WindowMain:
             self.on_lstSongs_row_selected(self.listbox, last_song)
 
     def play_next_song(self):
-        if self.randomplay:
-            next_song_num = random.randrange(0, len(self.listbox) - 1)
-            next_song = self.listbox.get_row_at_index(next_song_num)
+        if self.loop == False:
+            if self.randomplay:
+                next_song_num = random.randrange(0, len(self.listbox) - 1)
+                next_song = self.listbox.get_row_at_index(next_song_num)
 
+            else:
+                current_song = self.listbox.get_selected_row()
+
+                index = current_song.get_index() + 1
+                if current_song.get_index() == len(self.listbox) - 1:
+                    index = 0
+
+                next_song = self.listbox.get_row_at_index(index)
+
+            self.listbox.select_row(next_song)
+            self.on_lstSongs_row_selected(self.listbox, next_song)
         else:
-            current_song = self.listbox.get_selected_row()
-
-            index = current_song.get_index() + 1
-            if current_song.get_index() == len(self.listbox) - 1:
-                index = 0
-
-            next_song = self.listbox.get_row_at_index(index)
-
-        self.listbox.select_row(next_song)
-        self.on_lstSongs_row_selected(self.listbox, next_song)
+            self.player.set_state(Gst.State.PLAYING)
 
     def on_rndPlay_toggled(self, place_holder):
         self.randomplay = not self.randomplay
