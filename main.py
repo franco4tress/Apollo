@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 import gi
+import sys
+import threading
+import time
 
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, Pango, Gst
@@ -12,7 +15,6 @@ import random
 
 # from gi.repository import GSound
 # from gi.repository.Pango import WrapMode
-
 
 class WindowMain:
 
@@ -27,6 +29,8 @@ class WindowMain:
         # Display main window
         self.windowMain = self.builder.get_object("windowMain")
 
+        self.progressBar = self.builder.get_object("progressBar")
+
         listbox = self.builder.get_object("lstSongs")
         self.listbox = listbox
         self.listbox.set_selection_mode(Gtk.SelectionMode.SINGLE)
@@ -35,6 +39,21 @@ class WindowMain:
         self.player = Gst.ElementFactory.make("playbin", "player")
         fakesink = Gst.ElementFactory.make("fakesink", "fakesink")
         self.player.set_property("video-sink", fakesink)
+
+        # are we playing?
+        self.playing = False
+        # should we terminate execution?
+        self.terminate = False
+        # is seeking enabled for this media?
+        self.seek_enabled = False
+        # have we performed the seek already?
+        self.seek_done = False
+        # media duration (ns)
+        self.duration = Gst.CLOCK_TIME_NONE
+
+        self.progress_handler = None
+        self.exiting = False
+
         bus = self.player.get_bus()
         bus.add_signal_watch()
         bus.connect("message", self.on_message)
@@ -91,22 +110,28 @@ class WindowMain:
                 self.song_playing = filepath
 
             self.player.set_property("uri", "file://" + filepath)
-            self.player.set_state(Gst.State.PLAYING)
+            self.play_song()
 
         else:
             if playerState.state == Gst.State.PLAYING:
                 self.player.set_state(Gst.State.PAUSED)
 
             else:
-                self.player.set_state(Gst.State.PLAYING)
+                self.play_song()
 
     def playSong(self, path):
         print(path)
 
     def on_window_main_destroy(self, widget, data=None):
+        self.player.set_state(Gst.State.NULL)
+        self.progress_handler.cancel()
+        self.exiting = True
         Gtk.main_quit()
 
     def on_Quit_clicked(self, widget):
+        self.player.set_state(Gst.State.NULL)
+        self.progress_handler.cancel()
+        self.exiting = True
         Gtk.main_quit()
 
     def main(self):
@@ -119,12 +144,15 @@ class WindowMain:
             self.songs_played.append(current_song.get_index())
             self.player.set_state(Gst.State.NULL)
             self.play_next_song()
-            # self.button.set_label("Start")
+
         elif t == Gst.MessageType.ERROR:
             self.player.set_state(Gst.State.NULL)
             err, debug = message.parse_error()
             print("Error: %s" % err, debug)
             self.button.set_label("Start")
+
+        elif t == Gst.MessageType.DURATION_CHANGED:
+            self.duration = Gst.CLOCK_TIME_NONE
 
     def on_loopbutton_toggled(self, _):
         self.loop = not self.loop
@@ -148,6 +176,9 @@ class WindowMain:
             self.on_lstSongs_row_selected(self.listbox, last_song)
 
     def play_next_song(self):
+        if self.progress_handler:
+            self.progress_handler.cancel()
+
         if self.loop == False:
             if self.randomplay:
                 next_song_num = random.randrange(0, len(self.listbox) - 1)
@@ -165,7 +196,69 @@ class WindowMain:
             self.listbox.select_row(next_song)
             self.on_lstSongs_row_selected(self.listbox, next_song)
         else:
-            self.player.set_state(Gst.State.PLAYING)
+            self.play_song()
+
+    def play_song(self):
+        ret = self.player.set_state(Gst.State.PLAYING)
+
+        if ret == Gst.StateChangeReturn.FAILURE:
+            print("ERROR: Unable to set the pipeline to the playing state")
+            sys.exit(1)
+
+        self.progress_handler = threading.Timer(1.0, self.handle_song_progress)
+        self.progress_handler.start()
+
+    def handle_song_progress(self):
+        try:
+            # listen to the bus
+            bus = self.player.get_bus()
+            while True and not self.exiting:
+                time.sleep(0.5)
+                msg = bus.timed_pop_filtered(
+                    100 * Gst.MSECOND,
+                    (Gst.MessageType.STATE_CHANGED | Gst.MessageType.ERROR
+                        | Gst.MessageType.EOS | Gst.MessageType.DURATION_CHANGED)
+                )
+
+                # parse message
+                if msg:
+                    self.on_message(bus, msg)
+                else:
+                    # we got no message. this means the timeout expired
+                    if self.player:
+                        current = -1
+                        # query the current position of the stream
+                        ret, current = self.player.query_position(
+                            Gst.Format.TIME)
+                        if not ret:
+                            print("ERROR: Could not query current position")
+
+                        # if we don't know it yet, query the stream duration
+                        if self.duration == Gst.CLOCK_TIME_NONE:
+                            (ret, self.duration) = self.player.query_duration(
+                                Gst.Format.TIME)
+                            if not ret:
+                                print("ERROR: Could not query stream duration")
+
+                        # print current position and total duration
+                        # print("Position {0} / {1}".format(current, self.duration))
+
+                        prog = current / self.duration
+                        print(prog)
+                        self.progressBar.set_fraction(prog)
+
+                        # if seeking is enabled, we have not done it yet and the time is right,
+                        # seek
+                        if self.seek_enabled and not self.seek_done and current > 10 * Gst.SECOND:
+                            print("Reached 10s, performing seek...")
+                            self.player.seek_simple(
+                                Gst.Format.TIME, Gst.SeekFlags.FLUSH | Gst.SeekFlags.KEY_UNIT, 30 * Gst.SECOND)
+
+                            self.seek_done = True
+                if self.terminate:
+                    break
+        finally:
+            self.player.set_state(Gst.State.NULL)
 
     def on_rndPlay_toggled(self, place_holder):
         self.randomplay = not self.randomplay
