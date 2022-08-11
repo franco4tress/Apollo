@@ -128,7 +128,7 @@ class WindowMain:
         self.exiting = True
         Gtk.main_quit()
 
-    def on_Quit_clicked(self, widget):
+    def on_Quit_clicked(self, _):
         self.player.set_state(Gst.State.NULL)
         self.progress_handler.cancel()
         self.exiting = True
@@ -228,8 +228,7 @@ class WindowMain:
                     if self.player:
                         current = -1
                         # query the current position of the stream
-                        ret, current = self.player.query_position(
-                            Gst.Format.TIME)
+                        ret, current = self.player.query_position(Gst.Format.TIME)
                         if not ret:
                             print("ERROR: Could not query current position")
 
@@ -243,9 +242,7 @@ class WindowMain:
                         # print current position and total duration
                         # print("Position {0} / {1}".format(current, self.duration))
 
-                        prog = current / self.duration
-                        print(prog)
-                        self.progressBar.set_fraction(prog)
+                        self.progressBar.set_fraction(current / self.duration)
 
                         # if seeking is enabled, we have not done it yet and the time is right,
                         # seek
@@ -260,7 +257,7 @@ class WindowMain:
         finally:
             self.player.set_state(Gst.State.NULL)
 
-    def on_rndPlay_toggled(self, place_holder):
+    def on_rndPlay_toggled(self, _):
         self.randomplay = not self.randomplay
 
     def directory_entered(self, path):
