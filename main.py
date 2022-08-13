@@ -13,6 +13,7 @@ from mutagen.easyid3 import EasyID3
 
 import random
 
+
 # from gi.repository import GSound
 # from gi.repository.Pango import WrapMode
 
@@ -78,7 +79,6 @@ class WindowMain:
 
         filechooserdialog.destroy()
 
-
     def on_radio_button_toggled(self, radio, row):
         # If the radio button toggled to inactive, don't reactivate the row
         if not radio.get_active():
@@ -99,9 +99,9 @@ class WindowMain:
 
     def on_lstSongs_row_selected(self, listbox, listboxrow):
         filepath = self.songs[listboxrow.get_index()][0]
-#        current_song = self.listbox.get_selected_row()
-#        title = self.songs[listboxrow.get_index()][1]
-#        album = self.songs[listboxrow.get_index()][3]
+        #        current_song = self.listbox.get_selected_row()
+        #        title = self.songs[listboxrow.get_index()][1]
+        #        album = self.songs[listboxrow.get_index()][3]
         playerState = self.player.get_state(0)
 
         if filepath not in self.song_playing:
@@ -118,6 +118,9 @@ class WindowMain:
 
             else:
                 self.play_song()
+
+    def on_search_entry_changed(self, search_box):
+        self.listbox.set_filter_func(lambda row: search_box.get_text() in row.get_child().get_children()[0].get_label())
 
     def playSong(self, path):
         print(path)
@@ -181,12 +184,16 @@ class WindowMain:
 
         if self.loop == False:
             if self.randomplay:
+                # TODO: When a next song is to be played, we need to move to the next
+                #       index that is not hidden (Now we have filtered songs)
                 next_song_num = random.randrange(0, len(self.listbox) - 1)
                 next_song = self.listbox.get_row_at_index(next_song_num)
 
             else:
                 current_song = self.listbox.get_selected_row()
 
+                # TODO: When a next song is to be played, we need to move to the next
+                #       index that is not hidden (Now we have filtered songs)
                 index = current_song.get_index() + 1
                 if current_song.get_index() == len(self.listbox) - 1:
                     index = 0
@@ -217,7 +224,7 @@ class WindowMain:
                 msg = bus.timed_pop_filtered(
                     100 * Gst.MSECOND,
                     (Gst.MessageType.STATE_CHANGED | Gst.MessageType.ERROR
-                        | Gst.MessageType.EOS | Gst.MessageType.DURATION_CHANGED)
+                     | Gst.MessageType.EOS | Gst.MessageType.DURATION_CHANGED)
                 )
 
                 # parse message
@@ -271,10 +278,12 @@ class WindowMain:
                     if file_path.endswith(".mp3"):
                         self.lst_songs.append([file_path])
                         metadata = MP3(file_path, ID3=EasyID3)
-                        self.songs.append([file_path, metadata.get("title")[0], metadata.get("artist")[0], metadata.get("album")[0]])
+                        self.songs.append(
+                            [file_path, metadata.get("title")[0], metadata.get("artist")[0], metadata.get("album")[0]])
                         self._add_row(self.listbox, metadata.get("title")[0], metadata.get("album")[0], None)
 
         self.windowMain.show_all()
+
 
 if __name__ == "__main__":
     application = WindowMain()
