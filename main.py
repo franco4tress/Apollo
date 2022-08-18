@@ -64,6 +64,9 @@ class WindowMain:
         self.songs_played = []
         self.lst_songs = []
         self.songs = []
+        self.main_inf = self.builder.get_object("songmaininfo")
+        self.composer = self.builder.get_object("songcomposer")
+        self.length = self.builder.get_object("songlength")
 
         self.windowMain.show_all()
 
@@ -97,6 +100,12 @@ class WindowMain:
         row.add(box)
         listbox.insert(row, -1)
 
+    def seconds_to_minutes(self, song_time):
+        minutes = int(song_time) / 60
+        parts = str(minutes).split(".")
+        seconds = int((int(parts[1]) * 60) / 100)
+        return str(parts[0]) + ":" + str(seconds)[:2]
+
     def on_lstSongs_row_selected(self, listbox, listboxrow):
         filepath = self.songs[listboxrow.get_index()][0]
         #        current_song = self.listbox.get_selected_row()
@@ -119,8 +128,10 @@ class WindowMain:
             else:
                 self.play_song()
 
+        self.display_song_labels()
+
     def on_search_entry_changed(self, search_box):
-        self.listbox.set_filter_func(lambda row: search_box.get_text() in row.get_child().get_children()[0].get_label())
+        self.listbox.set_filter_func(lambda row: search_box.get_text().upper() in row.get_child().get_children()[0].get_label().upper())
 
     def playSong(self, path):
         print(path)
@@ -178,6 +189,13 @@ class WindowMain:
             self.listbox.select_row(last_song)
             self.on_lstSongs_row_selected(self.listbox, last_song)
 
+    def display_song_labels(self):
+        song_info = self.songs[self.listbox.get_selected_row().get_index()]
+        metadata = MP3(song_info[0], ID3=EasyID3)
+        self.composer.set_text("   {}".format(metadata.get("composer")[0]))
+        self.length.set_text("{}".format(self.seconds_to_minutes(metadata.info.length)))
+        self.main_inf.set_text("{}   By:   {}".format(song_info[1], song_info[2]))
+
     def play_next_song(self):
         if self.progress_handler:
             self.progress_handler.cancel()
@@ -189,21 +207,34 @@ class WindowMain:
                 next_song_num = random.randrange(0, len(self.listbox) - 1)
                 next_song = self.listbox.get_row_at_index(next_song_num)
 
+                print(next_song.get_state())
+            #               while next_song.hidden() == True:
+ #                   next_song_num = random.randrange(0, len(self.listbox) - 1)
+ #                   next_song = self.listbox.get_row_at_index(next_song_num)
+
             else:
                 current_song = self.listbox.get_selected_row()
 
                 # TODO: When a next song is to be played, we need to move to the next
                 #       index that is not hidden (Now we have filtered songs)
                 index = current_song.get_index() + 1
+                chosen_next_song = self.listbox.get_row_at_index(index)
                 if current_song.get_index() == len(self.listbox) - 1:
                     index = 0
 
-                next_song = self.listbox.get_row_at_index(index)
+ #               while not chosen_next_song.get_property("visible"):
+ #                   index = index + 1
+ #                   chosen_next_song = self.listbox.get_row_at_index(index)
+
+                chosen_next_song = self.listbox.get_row_at_index(index)
+                next_song = chosen_next_song
 
             self.listbox.select_row(next_song)
             self.on_lstSongs_row_selected(self.listbox, next_song)
         else:
             self.play_song()
+
+        self.display_song_labels()
 
     def play_song(self):
         ret = self.player.set_state(Gst.State.PLAYING)
@@ -280,7 +311,7 @@ class WindowMain:
                         metadata = MP3(file_path, ID3=EasyID3)
                         self.songs.append(
                             [file_path, metadata.get("title")[0], metadata.get("artist")[0], metadata.get("album")[0]])
-                        self._add_row(self.listbox, metadata.get("title")[0], metadata.get("album")[0], None)
+                        self._add_row(self.listbox, metadata.get("title")[0], metadata.get("artist")[0], None)
 
         self.windowMain.show_all()
 

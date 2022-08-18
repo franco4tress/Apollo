@@ -1,17 +1,12 @@
-Install pythong-gi
-===================
-sudo apt install python3-gi
+Install first:
+=================
+sudo dnf install glade-devel-3.38.2-5.fc36.x86_64 (gtk + gst)
+pip install mutagen (for metadata)
 
-Install Gtk
-============
-pip install PyGTK
-sudo apt install gtk
-sudo apt install python3-gobject
 
 To install libhandy:
 ====================
 git clone https://gitlab.gnome.org/GNOME/libhandy/
-sudo dnf install glade-devel-3.38.2-5.fc36.x86_64
 sudo dnf install vala
 
 Sometimes you need to run glade from the folder where you installed libhandy to see the Hand widgets
