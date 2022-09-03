@@ -286,6 +286,15 @@ class WindowMain:
             self.player.set_state(Gst.State.NULL)
             self.display_song_labels()
 
+        for song_num in self.songs_played:
+            if song_num == row_index_to_remove:
+                self.songs_played.pop(song_num)
+            elif song_num > row_index_to_remove:
+                self.songs_played[song_num] = self.songs_played[song_num] - 1
+
+        self.songs.pop(row_index_to_remove)
+        self.lst_songs.pop(row_index_to_remove)
+
     def on_wipesongs_clicked(self, _):
         if self.progress_handler:
             self.progress_handler.cancel()
