@@ -13,6 +13,7 @@ from mutagen.easyid3 import EasyID3
 
 import random
 
+from wikiscrap import getWikiData
 
 # from gi.repository import GSound
 # from gi.repository.Pango import WrapMode
@@ -31,6 +32,8 @@ class WindowMain:
         self.windowMain = self.builder.get_object("windowMain")
 
         self.progressBar = self.builder.get_object("progressBar")
+
+        self.playpause = self.builder.get_object("playpause")
 
         listbox = self.builder.get_object("lstSongs")
         self.listbox = listbox
@@ -67,6 +70,9 @@ class WindowMain:
         self.main_inf = self.builder.get_object("songmaininfo")
         self.composer = self.builder.get_object("songcomposer")
         self.length = self.builder.get_object("songlength")
+        self.genre = self.builder.get_object("songgenre")
+        self.tracknum = self.builder.get_object("songtracknumber")
+        self.albumimage = self.builder.get_object("albumcover")
 
         self.windowMain.show_all()
 
@@ -104,13 +110,12 @@ class WindowMain:
         minutes = int(song_time) / 60
         parts = str(minutes).split(".")
         seconds = int((int(parts[1]) * 60) / 100)
+        if len(str(seconds).split()) == 1:
+            seconds = seconds * 10
         return str(parts[0]) + ":" + str(seconds)[:2]
 
     def on_lstSongs_row_selected(self, listbox, listboxrow):
         filepath = self.songs[listboxrow.get_index()][0]
-        #        current_song = self.listbox.get_selected_row()
-        #        title = self.songs[listboxrow.get_index()][1]
-        #        album = self.songs[listboxrow.get_index()][3]
         playerState = self.player.get_state(0)
 
         if filepath not in self.song_playing:
@@ -128,6 +133,7 @@ class WindowMain:
             else:
                 self.play_song()
 
+        self.playpause.set_label("Pause")
         self.display_song_labels()
 
     def on_search_entry_changed(self, search_box):
@@ -178,7 +184,9 @@ class WindowMain:
     def on_skipbutton_clicked(self, _):
         self.player.set_state(Gst.State.NULL)
         current_song = self.listbox.get_selected_row()
-        self.songs_played.append(current_song.get_index())
+        if current_song != None:
+            self.songs_played.append(current_song.get_index())
+
         self.play_next_song()
 
     def play_last_song(self):
@@ -190,11 +198,23 @@ class WindowMain:
             self.on_lstSongs_row_selected(self.listbox, last_song)
 
     def display_song_labels(self):
-        song_info = self.songs[self.listbox.get_selected_row().get_index()]
-        metadata = MP3(song_info[0], ID3=EasyID3)
-        self.composer.set_text("   {}".format(metadata.get("composer")[0]))
-        self.length.set_text("{}".format(self.seconds_to_minutes(metadata.info.length)))
-        self.main_inf.set_text("{}   By:   {}".format(song_info[1], song_info[2]))
+        if len(self.songs) == 0:
+            self.composer.set_text("")
+            self.length.set_text("")
+            self.main_inf.set_text("No song is currently being played.")
+            self.genre.set_text("")
+            self.tracknum.set_text("")
+            # self.albumimage.set_from_pixbuf(apollo_logo)
+
+        else:
+            song_info = self.songs[self.listbox.get_selected_row().get_index()]
+            metadata = MP3(song_info[0], ID3=EasyID3)
+            self.composer.set_text("   {}".format(metadata.get("composer")[0]))
+            self.length.set_text("{}".format(self.seconds_to_minutes(metadata.info.length)))
+            self.main_inf.set_text("{}   By:   {}".format(song_info[1], song_info[2]))
+            self.genre.set_text(metadata.get("genre")[0])
+            self.tracknum.set_text("   {}".format(metadata.get("tracknumber")[0]))
+            # self.albumimage.set_from_pixbuf(getWikiData(metadata.get("artist")[0], metadata.get("title")[0]))
 
     def play_next_song(self):
         if self.progress_handler:
@@ -207,24 +227,18 @@ class WindowMain:
                 next_song_num = random.randrange(0, len(self.listbox) - 1)
                 next_song = self.listbox.get_row_at_index(next_song_num)
 
-                print(next_song.get_state())
-            #               while next_song.hidden() == True:
- #                   next_song_num = random.randrange(0, len(self.listbox) - 1)
- #                   next_song = self.listbox.get_row_at_index(next_song_num)
-
             else:
                 current_song = self.listbox.get_selected_row()
-
-                # TODO: When a next song is to be played, we need to move to the next
-                #       index that is not hidden (Now we have filtered songs)
-                index = current_song.get_index() + 1
-                chosen_next_song = self.listbox.get_row_at_index(index)
-                if current_song.get_index() == len(self.listbox) - 1:
+                if current_song == None:
                     index = 0
 
- #               while not chosen_next_song.get_property("visible"):
- #                   index = index + 1
- #                   chosen_next_song = self.listbox.get_row_at_index(index)
+                else:
+                    # TODO: When a next song is to be played, we need to move to the next
+                    #       index that is not hidden (Now we have filtered songs)
+                    index = current_song.get_index() + 1
+                    chosen_next_song = self.listbox.get_row_at_index(index)
+                    if current_song.get_index() == len(self.listbox) - 1:
+                        index = 0
 
                 chosen_next_song = self.listbox.get_row_at_index(index)
                 next_song = chosen_next_song
@@ -234,6 +248,7 @@ class WindowMain:
         else:
             self.play_song()
 
+        self.song_playing = self.songs[self.listbox.get_selected_row().get_index()][0]
         self.display_song_labels()
 
     def play_song(self):
@@ -245,6 +260,46 @@ class WindowMain:
 
         self.progress_handler = threading.Timer(1.0, self.handle_song_progress)
         self.progress_handler.start()
+
+    def on_playpause_clicked(self, button):
+        playerstate = self.player.get_state(0).state
+
+        if playerstate == Gst.State.PLAYING:
+            self.player.set_state(Gst.State.PAUSED)
+            button.set_label("Play")
+
+        else:
+            if playerstate == Gst.State.NULL:
+                self.play_next_song()
+            else:
+                self.player.set_state(Gst.State.PLAYING)
+
+            button.set_label("Pause")
+
+    def on_removesong_clicked(self, _):
+        self.on_skipbutton_clicked(None)
+        row_index_to_remove = self.songs_played.pop(len(self.songs_played) - 1)
+        self.listbox.remove(self.listbox.get_row_at_index(row_index_to_remove))
+        if len(self.listbox) == 0:
+            self.playpause.set_label("Play")
+            self.playpause.set_sensitive(False)
+            self.player.set_state(Gst.State.NULL)
+            self.display_song_labels()
+
+    def on_wipesongs_clicked(self, _):
+        if self.progress_handler:
+            self.progress_handler.cancel()
+
+        self.player.set_state(Gst.State.NULL)
+        for song_row in self.listbox:
+            self.listbox.remove(song_row)
+
+        self.songs = []
+        self.songs_played = []
+        self.lst_songs = []
+        self.playpause.set_label("Play")
+        self.playpause.set_sensitive(False)
+        self.display_song_labels()
 
     def handle_song_progress(self):
         try:
@@ -312,6 +367,8 @@ class WindowMain:
                         self.songs.append(
                             [file_path, metadata.get("title")[0], metadata.get("artist")[0], metadata.get("album")[0]])
                         self._add_row(self.listbox, metadata.get("title")[0], metadata.get("artist")[0], None)
+
+        self.playpause.set_sensitive(True)
 
         self.windowMain.show_all()
 

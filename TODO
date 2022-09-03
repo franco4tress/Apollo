@@ -1,6 +1,8 @@
+- refresh all variables with song numbers and song names
+- after wipe songs clicked last song is still loaded
 - add randomizer for songs *
-- add play pause skip ect. buttons
-- bar at bottom for song progress
+- add play pause skip ect. buttons *
+- bar at bottom for song progress *
 - lyrics, artist, album, ect. metadata
 - add weight system for songs, artists, composers.
 - add playlists with randomizer/loop options (boolean)
